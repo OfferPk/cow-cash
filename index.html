@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#7cc26b">
+  <meta name="description" content="Cow Cash: a small idle clicker game. Tap the cow, sell milk, grow your farm. Virtual coins only.">
+  <title>Cow Cash 🐄: Idle Milk Farm</title>
+  <link rel="icon" href="assets/cow.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>🐄 Cow Cash</h1>
+    <div class="stats">
+      <div class="stat"><span class="label">Coins</span><span id="coins" class="value">0</span></div>
+      <div class="stat"><span class="label">Milk</span><span id="milk" class="value">0</span></div>
+      <div class="stat"><span class="label">Milk/sec</span><span id="mps" class="value">0</span></div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="farm">
+      <p class="hint">Tap the cow to get milk!</p>
+      <button id="cow" class="cow-btn" aria-label="Tap the cow to get milk">
+        <img src="assets/cow.svg" alt="Cow" draggable="false">
+      </button>
+      <p class="per-tap">+<span id="perTap">1</span> milk per tap</p>
+
+      <div class="sell-panel">
+        <button id="sellBtn" class="btn primary">Sell milk (<span id="sellValue">0</span> 🪙)</button>
+        <label class="toggle">
+          <input type="checkbox" id="autoSell">
+          <span class="slider"></span>
+          <span class="toggle-label">Auto-sell</span>
+        </label>
+        <p class="price">Price: <span id="price">1</span> 🪙 per milk</p>
+      </div>
+    </section>
+
+    <section class="shop">
+      <h2>🏪 Shop</h2>
+      <div id="shopList" class="shop-list"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Virtual coins only. Just for fun. Auto-saves in your browser.</span>
+    <div class="footer-actions">
+      <button id="saveBtn" class="btn small">💾 Save</button>
+      <button id="resetBtn" class="btn small danger">↺ Reset</button>
+    </div>
+  </footer>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <h3 id="modalTitle"></h3>
+      <p id="modalBody"></p>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="js/game.js"></script>
+</body>
+</html>
