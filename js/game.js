@@ -53,7 +53,7 @@
   // ---------- DOM ----------
   const $ = id => document.getElementById(id);
   const el = {
-    coins: $('coins'), milk: $('milk'), mps: $('mps'), perTap: $('perTap'),
+    coins: $('coins'), milk: $('milk'), milkCapacity: $('milkCapacity'), mps: $('mps'), perTap: $('perTap'),
     cow: $('cow'), sellBtn: $('sellBtn'), sellValue: $('sellValue'), autoSell: $('autoSell'),
     price: $('price'), shopList: $('shopList'), saveBtn: $('saveBtn'), resetBtn: $('resetBtn'),
     modal: $('modal'), modalTitle: $('modalTitle'), modalBody: $('modalBody'),
@@ -126,7 +126,11 @@
   }
   function render() {
     el.coins.textContent = fmt(state.coins);
-    el.milk.textContent = `${fmt(state.milk)} / ${fmt(capacity(state))}`;
+    const storageCapacity = capacity(state);
+    el.milk.textContent = `${fmt(state.milk)} / ${fmt(storageCapacity)}`;
+    el.milkCapacity.max = storageCapacity;
+    el.milkCapacity.value = Math.min(Math.max(state.milk, 0), storageCapacity);
+    el.milkCapacity.setAttribute('aria-valuetext', `${fmt(state.milk)} of ${fmt(storageCapacity)} milk`);
     el.mps.textContent = fmt(cowMps(state));
     el.perTap.textContent = fmt(perTap(state));
     el.price.textContent = fmt(price(state));
