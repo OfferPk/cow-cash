@@ -30,10 +30,11 @@
       <div class="sell-panel">
         <button id="sellBtn" class="btn primary">Sell milk (<span id="sellValue">0</span> 🪙)</button>
         <label class="toggle">
-          <input type="checkbox" id="autoSell">
+          <input type="checkbox" id="autoSell" aria-describedby="autoSellHelp">
           <span class="slider"></span>
           <span class="toggle-label">Auto-sell</span>
         </label>
+        <p class="price" id="autoSellHelp">Only applies to milk produced during active play. Offline earnings are paid as coins either way and leave milk unchanged.</p>
         <p class="price">Price: <span id="price">1</span> 🪙 per milk</p>
       </div>
     </section>
