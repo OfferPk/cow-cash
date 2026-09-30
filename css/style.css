@@ -130,4 +130,7 @@ button { font: inherit; cursor: pointer; }
   .stats { width: 100%; }
   .footer { justify-content: center; text-align: center; }
 }
-@media (prefers-reduced-motion: reduce) { .cow-btn img { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cow-btn img { animation: none; }
+  .milk-meter::-webkit-progress-value { transition: none; }
+}
