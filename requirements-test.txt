@@ -1,0 +1,2 @@
+# Install the matching browser with: python -m playwright install chromium
+playwright==1.62.0

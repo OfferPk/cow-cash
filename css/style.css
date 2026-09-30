@@ -70,8 +70,13 @@ button { font: inherit; cursor: pointer; }
 .btn.small { padding: 6px 12px; font-size: .85rem; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
-.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
-.toggle input { display: none; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; position: relative; }
+.toggle input {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); clip-path: inset(50%);
+  white-space: nowrap; border: 0;
+}
+.toggle input:focus + .slider { outline: 3px solid var(--ink); outline-offset: 3px; }
 .slider { width: 46px; height: 26px; background: #d8cfc4; border-radius: 99px; position: relative; transition: background .2s; }
 .slider::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
 .toggle input:checked + .slider { background: var(--grass); }
