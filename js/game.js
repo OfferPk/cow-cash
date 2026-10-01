@@ -130,7 +130,12 @@
     el.milk.textContent = `${fmt(state.milk)} / ${fmt(storageCapacity)}`;
     el.milkCapacity.max = storageCapacity;
     el.milkCapacity.value = Math.min(Math.max(state.milk, 0), storageCapacity);
-    el.milkCapacity.setAttribute('aria-valuetext', `${fmt(state.milk)} of ${fmt(storageCapacity)} milk`);
+    const barnFull = state.milk >= storageCapacity;
+    const barnNearlyFull = !barnFull && state.milk >= storageCapacity * 0.8;
+    el.milkCapacity.classList.toggle('is-near-full', barnNearlyFull);
+    el.milkCapacity.classList.toggle('is-full', barnFull);
+    const status = barnFull ? ', barn full' : barnNearlyFull ? ', barn nearly full' : '';
+    el.milkCapacity.setAttribute('aria-valuetext', `${fmt(state.milk)} of ${fmt(storageCapacity)} milk${status}`);
     el.mps.textContent = fmt(cowMps(state));
     el.perTap.textContent = fmt(perTap(state));
     el.price.textContent = fmt(price(state));

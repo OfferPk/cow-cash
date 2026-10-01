@@ -36,6 +36,10 @@ button { font: inherit; cursor: pointer; }
 .milk-meter::-webkit-progress-bar { background: #f3dfb5; border-radius: 99px; }
 .milk-meter::-webkit-progress-value { background: var(--grass-dark); border-radius: 99px; transition: width .15s ease; }
 .milk-meter::-moz-progress-bar { background: var(--grass-dark); border-radius: 99px; }
+.milk-meter.is-near-full::-webkit-progress-value { background: var(--accent-dark); }
+.milk-meter.is-near-full::-moz-progress-bar { background: var(--accent-dark); }
+.milk-meter.is-full::-webkit-progress-value { background: #b23f3f; }
+.milk-meter.is-full::-moz-progress-bar { background: #b23f3f; }
 
 .layout {
   flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;

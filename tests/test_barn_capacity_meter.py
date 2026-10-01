@@ -95,6 +95,47 @@ class BarnCapacityMeterTests(unittest.TestCase):
         finally:
             context.close()
 
+    def test_meter_warns_when_nearly_full_and_clears_after_capacity_upgrade(self):
+        now_ms = 1_700_000_000_000
+        synthetic_save = {
+            "coins": 1000,
+            "milk": 79,
+            "totalMilk": 79,
+            "autoSell": False,
+            "owned": {"cow": 0, "machine": 0, "feed": 0, "barn": 0},
+            "lastSaved": now_ms,
+        }
+        context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        try:
+            page = context.new_page()
+            page.add_init_script(
+                """(() => {
+                  Date.now = () => __NOW__;
+                  window.requestAnimationFrame = () => 0;
+                  localStorage.clear();
+                  localStorage.setItem("cowCashSave.v1", JSON.stringify(__SAVE__));
+                })();"""
+                .replace("__NOW__", str(now_ms))
+                .replace("__SAVE__", json.dumps(synthetic_save))
+            )
+            page.goto(f"http://127.0.0.1:{self.server.server_port}/", wait_until="load")
+            meter = page.get_by_role("progressbar", name="Barn storage used")
+
+            page.locator("#cow").click()
+            self.assertEqual(meter.get_attribute("aria-valuetext"), "80 of 100 milk, barn nearly full")
+            self.assertTrue(meter.evaluate("el => el.classList.contains('is-near-full')"))
+
+            for _ in range(20):
+                page.locator("#cow").click()
+            self.assertEqual(meter.get_attribute("aria-valuetext"), "100 of 100 milk, barn full")
+            self.assertTrue(meter.evaluate("el => el.classList.contains('is-full')"))
+
+            page.locator('[data-id="barn"]').click()
+            self.assertEqual(meter.get_attribute("aria-valuetext"), "100 of 200 milk")
+            self.assertFalse(meter.evaluate("el => el.classList.contains('is-near-full') || el.classList.contains('is-full')"))
+        finally:
+            context.close()
+
 
 if __name__ == "__main__":
     unittest.main()
