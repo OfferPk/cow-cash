@@ -10,7 +10,8 @@
   const BASE_CAPACITY = 100;     // barn milk storage
   const BABY_COW_COST = 15000;
   const BABY_COW_MATURATION_MS = 12 * 60 * 60 * 1000;
-  const BABY_COW_MATURE_MPS = 15;
+  const BABY_COW_MATURE_CAP_MPS = 15;
+  const BABY_COW_MATURE_RATE = 0.15;
   const BABY_COW_GLOBAL_MULTIPLIER = 1.15;
 
   const ITEMS = [
@@ -49,8 +50,11 @@
     return s.owned.babyCow > 0 && s.babyCowMaturesAt > 0 && timestamp >= s.babyCowMaturesAt;
   }
   function milkMps(s, timestamp) {
-    const cowProduction = cowMps(s) * globalMilkMultiplier(s);
-    const matureBabyCowProduction = isBabyCowMatureAt(s, timestamp) ? BABY_COW_MATURE_MPS : 0;
+    const basePassiveCowProduction = cowMps(s);
+    const cowProduction = basePassiveCowProduction * globalMilkMultiplier(s);
+    const matureBabyCowProduction = isBabyCowMatureAt(s, timestamp)
+      ? Math.min(BABY_COW_MATURE_CAP_MPS, BABY_COW_MATURE_RATE * basePassiveCowProduction)
+      : 0;
     return cowProduction + matureBabyCowProduction;
   }
   function capacity(s) { return BASE_CAPACITY * Math.pow(2, s.owned.barn); }
@@ -64,13 +68,13 @@
   }
   function babyCowDescription(s, now) {
     if (s.owned.babyCow <= 0) {
-      return 'One-time: +15% global milk production. In 12 hours, becomes a Golden/Trophy Cow with permanent +15 milk/sec.';
+      return 'One-time: +15% global milk production. In 12 hours, adds +15% of base passive milk production (capped at +15 milk/sec).';
     }
     if (isBabyCowMatureAt(s, now)) {
-      return '+15% global milk production, plus permanent +15 milk/sec.';
+      return '+15% global milk production, plus +15% of base passive milk production (capped at +15 milk/sec).';
     }
     const remaining = Math.max(0, Math.ceil((s.babyCowMaturesAt - now) / 1000));
-    return `+15% global milk production. Golden/Trophy Cow in ${fmtTime(remaining)}.`;
+    return `+15% global milk production. Golden/Trophy Cow in ${fmtTime(remaining)}; then +15% of base passive milk production (capped at +15 milk/sec).`;
   }
   function milkProducedBetween(s, fromMs, toMs) {
     if (toMs <= fromMs) return 0;

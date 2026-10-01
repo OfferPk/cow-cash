@@ -87,6 +87,7 @@ class BabyCowTests(unittest.TestCase):
         context = self.browser.new_context(viewport={"width": 390, "height": 844})
         try:
             self.assertEqual(context.cookies(), [])
+            self.assertEqual(context.storage_state()["origins"], [])
             self.assertEqual(context.pages, [])
             page = context.new_page()
             self.assertEqual(page.url, "about:blank")
@@ -187,7 +188,7 @@ class BabyCowTests(unittest.TestCase):
         finally:
             context.close()
 
-    def test_twelve_hour_boundary_and_fixed_mature_bonus_with_controlled_clock(self):
+    def test_twelve_hour_boundary_and_low_rate_mature_bonus_with_controlled_clock(self):
         purchased_at = 1_700_000_000_000
         maturity_at = purchased_at + MATURATION_MS
         before_boundary = maturity_at - 1000
@@ -213,10 +214,42 @@ class BabyCowTests(unittest.TestCase):
 
             page.evaluate("(timestamp) => window.__setMockNow(timestamp)", maturity_at)
             page.wait_for_function("document.querySelector('[data-id=\"babyCow\"] .badge').textContent.includes('Golden Cow')")
-            self.assertEqual(page.locator("#mps").inner_text(), "17.3")
-            self.assertIn("permanent +15 milk/sec", baby_cow.locator(".desc").inner_text())
+            self.assertEqual(page.locator("#mps").inner_text(), "2.6")
+            self.assertIn("+15% of base passive milk production (capped at +15 milk/sec)", baby_cow.locator(".desc").inner_text())
             saved = page.evaluate("JSON.parse(localStorage.getItem('cowCashSave.v1'))")
             self.assertEqual(saved["babyCowMaturedAt"], maturity_at)
+        finally:
+            context.close()
+
+    def test_mature_bonus_is_fifteen_percent_of_base_below_cap_and_capped_at_fifteen(self):
+        now_ms = 1_700_000_000_000
+        purchased_at = now_ms - MATURATION_MS
+        maturity_at = purchased_at + MATURATION_MS
+        base_save = self._save(
+            now_ms,
+            owned={"cow": 2, "machine": 0, "feed": 0, "barn": 0, "factory": 0, "babyCow": 1},
+            babyCowPurchasedAt=purchased_at,
+            babyCowMaturesAt=maturity_at,
+            babyCowMaturedAt=maturity_at,
+        )
+        context, page = self._open_game(base_save, now_ms)
+        try:
+            # Base passive production is 2; the mature bonus is 0.3, not 15% of the globally boosted 2.3.
+            self.assertEqual(page.locator("#mps").inner_text(), "2.6")
+        finally:
+            context.close()
+
+        high_save = self._save(
+            now_ms,
+            owned={"cow": 200, "machine": 0, "feed": 0, "barn": 0, "factory": 0, "babyCow": 1},
+            babyCowPurchasedAt=purchased_at,
+            babyCowMaturesAt=maturity_at,
+            babyCowMaturedAt=maturity_at,
+        )
+        context, page = self._open_game(high_save, now_ms)
+        try:
+            # 15% of base 200 would be 30, so the mature bonus caps at 15: 200 * 1.15 + 15 = 245.
+            self.assertEqual(page.locator("#mps").inner_text(), "245")
         finally:
             context.close()
 
@@ -229,7 +262,7 @@ class BabyCowTests(unittest.TestCase):
             coins=12,
             milk=5,
             totalMilk=17,
-            owned={"cow": 0, "machine": 0, "feed": 0, "barn": 0, "factory": 0, "babyCow": 1},
+            owned={"cow": 2, "machine": 0, "feed": 0, "barn": 0, "factory": 0, "babyCow": 1},
             babyCowPurchasedAt=purchased_at,
             babyCowMaturesAt=maturity_at,
             babyCowMaturedAt=0,
@@ -246,10 +279,10 @@ class BabyCowTests(unittest.TestCase):
         second_context, second_page = self._open_game(persisted, after_boundary)
         try:
             self.assertEqual(second_page.locator("#modalTitle").inner_text(), "Welcome back! 🐄")
-            self.assertIn("Your cows made 54K milk, sold for 54K coins", second_page.locator("#modalBody").inner_text())
-            self.assertEqual(second_page.locator("#coins").inner_text(), "54.01K")
+            self.assertIn("Your cows made 9.5K milk, sold for 9.5K coins", second_page.locator("#modalBody").inner_text())
+            self.assertEqual(second_page.locator("#coins").inner_text(), "9.51K")
             self.assertEqual(second_page.locator("#milk").inner_text(), "5 / 100")
-            self.assertEqual(second_page.locator("#totalMilk").inner_text(), "54.02K")
+            self.assertEqual(second_page.locator("#totalMilk").inner_text(), "9.51K")
             self.assertEqual(second_page.locator('[data-id="babyCow"] .badge').inner_text(), "🏆 Golden Cow")
 
             second_page.get_by_role("button", name="Collect").click()
@@ -257,7 +290,7 @@ class BabyCowTests(unittest.TestCase):
             after_reload = second_page.evaluate("JSON.parse(localStorage.getItem('cowCashSave.v1'))")
             self.assertEqual(after_reload["babyCowMaturedAt"], maturity_at)
             self.assertEqual(after_reload["milk"], 5)
-            self.assertEqual(after_reload["totalMilk"], 54_017)
+            self.assertAlmostEqual(after_reload["totalMilk"], 9_515)
         finally:
             second_context.close()
 
@@ -278,15 +311,15 @@ class BabyCowTests(unittest.TestCase):
         )
         context, page = self._open_game(synthetic, now_ms)
         try:
-            # The capped two-hour window contains one hour at 2.3 MPS and one at 17.3 MPS.
-            expected_milk = (2.3 * HOUR_MS / 1000) + (17.3 * HOUR_MS / 1000)
-            self.assertEqual(expected_milk, 70_560)
-            self.assertEqual(page.locator("#coins").inner_text(), "70.57K")
+            # The capped window splits at maturity: 2.3 before, then 2.6 (base 2 + 15% of base) MPS.
+            expected_milk = (2.3 * HOUR_MS / 1000) + (2.6 * HOUR_MS / 1000)
+            self.assertAlmostEqual(expected_milk, 17_640)
+            self.assertEqual(page.locator("#coins").inner_text(), "17.65K")
             self.assertEqual(page.locator("#milk").inner_text(), "10 / 100")
-            self.assertEqual(page.locator("#totalMilk").inner_text(), "70.66K")
+            self.assertEqual(page.locator("#totalMilk").inner_text(), "17.74K")
             self.assertTrue(page.locator("#autoSell").is_checked())
             self.assertIn("capped at 2h", page.locator("#modalBody").inner_text())
-            self.assertIn("70.56K milk", page.locator("#modalBody").inner_text())
+            self.assertIn("17.64K milk", page.locator("#modalBody").inner_text())
             self.assertEqual(page.locator('[data-id="babyCow"] .badge').inner_text(), "🏆 Golden Cow")
         finally:
             context.close()

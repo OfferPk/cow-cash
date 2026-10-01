@@ -16,7 +16,7 @@ A small, cozy browser idle/clicker game. Tap the cow, collect milk, sell it for 
   - 🌾 **Better Feed**: +50% milk from taps and cows
   - 🏠 **Bigger Barn**: doubles milk storage and adds +10% to the sell price
   - 🏭 **Dairy Factory**: one-time 25,000-coin upgrade that triples the sell price
-- 🐮 **Baby Cow**: one-time 15,000-coin upgrade for +15% global milk production. After 12 elapsed hours online or offline, it becomes a **Golden/Trophy Cow** with a permanent +15 milk/sec and a badge.
+- 🐮 **Baby Cow**: one-time 15,000-coin upgrade for +15% global milk production. After 12 elapsed hours online or offline, it becomes a **Golden/Trophy Cow** with a badge and adds +15% of base passive milk production (capped at +15 milk/sec).
 - Progress **auto-saves** to your browser (localStorage) every 10 seconds, and whenever you leave the page.
 - When you come back, your cows' **offline earnings** are paid directly as coins (capped at 2 hours), regardless of Auto-sell; your milk is unchanged.
 - **Reset** (with confirmation) starts a fresh farm.
