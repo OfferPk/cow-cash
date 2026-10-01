@@ -8,10 +8,14 @@
   const COST_SCALE = 1.15;
   const BASE_PRICE = 1;          // coins per milk
   const BASE_CAPACITY = 100;     // barn milk storage
+  const BABY_COW_COST = 15000;
+  const BABY_COW_MATURATION_MS = 12 * 60 * 60 * 1000;
+  const BABY_COW_MATURE_MPS = 15;
+  const BABY_COW_GLOBAL_MULTIPLIER = 1.15;
 
   const ITEMS = [
     { id: 'cow',     icon: '🐄', name: 'Extra Cow',       baseCost: 15,
-      desc: s => `+1 milk/sec each (you make ${fmt(cowMps(s))}/sec)` },
+      desc: s => `+1 milk/sec each (your cows make ${fmt(cowMps(s) * globalMilkMultiplier(s))}/sec)` },
     { id: 'machine', icon: '⚙️', name: 'Milking Machine', baseCost: 50,
       desc: s => `Tap multiplier: x${tapMultiplier(s)} → x${tapMultiplier(s) + 1}` },
     { id: 'feed',    icon: '🌾', name: 'Better Feed',     baseCost: 120,
@@ -20,11 +24,16 @@
       desc: s => `Doubles storage (${fmt(capacity(s))} milk) and +10% sell price` },
     { id: 'factory', icon: '🏭', name: 'Dairy Factory',   baseCost: 25000, oneTime: true,
       desc: () => 'Permanently triples milk sale price' },
+    { id: 'babyCow', icon: '🐮', name: 'Baby Cow',        baseCost: BABY_COW_COST, oneTime: true,
+      desc: s => babyCowDescription(s, Date.now()) },
   ];
 
   const defaultState = () => ({
     coins: 0, milk: 0, totalMilk: 0, autoSell: false,
-    owned: { cow: 0, machine: 0, feed: 0, barn: 0, factory: 0 },
+    owned: { cow: 0, machine: 0, feed: 0, barn: 0, factory: 0, babyCow: 0 },
+    babyCowPurchasedAt: 0,
+    babyCowMaturesAt: 0,
+    babyCowMaturedAt: 0,
     lastSaved: Date.now(),
   });
 
@@ -33,8 +42,17 @@
   // ---------- Formulas ----------
   function feedMultiplier(s) { return 1 + 0.5 * s.owned.feed; }
   function tapMultiplier(s) { return 1 + s.owned.machine; }
-  function perTap(s) { return tapMultiplier(s) * feedMultiplier(s); }
+  function globalMilkMultiplier(s) { return s.owned.babyCow > 0 ? BABY_COW_GLOBAL_MULTIPLIER : 1; }
+  function perTap(s) { return tapMultiplier(s) * feedMultiplier(s) * globalMilkMultiplier(s); }
   function cowMps(s) { return s.owned.cow * feedMultiplier(s); }
+  function isBabyCowMatureAt(s, timestamp) {
+    return s.owned.babyCow > 0 && s.babyCowMaturesAt > 0 && timestamp >= s.babyCowMaturesAt;
+  }
+  function milkMps(s, timestamp) {
+    const cowProduction = cowMps(s) * globalMilkMultiplier(s);
+    const matureBabyCowProduction = isBabyCowMatureAt(s, timestamp) ? BABY_COW_MATURE_MPS : 0;
+    return cowProduction + matureBabyCowProduction;
+  }
   function capacity(s) { return BASE_CAPACITY * Math.pow(2, s.owned.barn); }
   function salePrice(s) {
     const barnMultiplier = 1 + 0.1 * s.owned.barn;
@@ -43,6 +61,27 @@
   }
   function cost(item, s) {
     return item.oneTime ? item.baseCost : Math.ceil(item.baseCost * Math.pow(COST_SCALE, s.owned[item.id]));
+  }
+  function babyCowDescription(s, now) {
+    if (s.owned.babyCow <= 0) {
+      return 'One-time: +15% global milk production. In 12 hours, becomes a Golden/Trophy Cow with permanent +15 milk/sec.';
+    }
+    if (isBabyCowMatureAt(s, now)) {
+      return '+15% global milk production, plus permanent +15 milk/sec.';
+    }
+    const remaining = Math.max(0, Math.ceil((s.babyCowMaturesAt - now) / 1000));
+    return `+15% global milk production. Golden/Trophy Cow in ${fmtTime(remaining)}.`;
+  }
+  function milkProducedBetween(s, fromMs, toMs) {
+    if (toMs <= fromMs) return 0;
+    const durationSec = (toMs - fromMs) / 1000;
+    const maturity = s.babyCowMaturesAt;
+    if (s.owned.babyCow <= 0 || maturity <= fromMs || maturity >= toMs) {
+      return milkMps(s, toMs) * durationSec;
+    }
+    const beforeMaturitySec = (maturity - fromMs) / 1000;
+    const afterMaturitySec = (toMs - maturity) / 1000;
+    return milkMps(s, fromMs) * beforeMaturitySec + milkMps(s, maturity) * afterMaturitySec;
   }
 
   // ---------- Formatting ----------
@@ -90,6 +129,12 @@
     if (state.coins < c || (item.oneTime && state.owned[item.id] > 0)) return;
     state.coins -= c;
     state.owned[item.id]++;
+    if (item.id === 'babyCow') {
+      state.babyCowPurchasedAt = Date.now();
+      state.babyCowMaturesAt = state.babyCowPurchasedAt + BABY_COW_MATURATION_MS;
+      state.babyCowMaturedAt = 0;
+      save(false);
+    }
     renderShop();
     render();
   }
@@ -125,7 +170,7 @@
       b.dataset.id = item.id;
       b.innerHTML = `
         <span class="icon">${item.icon}</span>
-        <span class="info"><div class="name">${item.name}</div><div class="desc"></div></span>
+        <span class="info"><div class="name">${item.name}</div><div class="desc"></div><span class="badge" aria-label="Golden Cow badge"></span></span>
         <span class="meta"><div class="cost"></div><div class="owned"></div></span>`;
       b.addEventListener('click', () => buy(item));
       el.shopList.appendChild(b);
@@ -133,6 +178,8 @@
     render();
   }
   function render() {
+    const now = Date.now();
+    updateBabyCowMaturity(now);
     el.coins.textContent = fmt(state.coins);
     const storageCapacity = capacity(state);
     el.milk.textContent = `${fmt(state.milk)} / ${fmt(storageCapacity)}`;
@@ -144,7 +191,7 @@
     el.milkCapacity.classList.toggle('is-full', barnFull);
     const status = barnFull ? ', barn full' : barnNearlyFull ? ', barn nearly full' : '';
     el.milkCapacity.setAttribute('aria-valuetext', `${fmt(state.milk)} of ${fmt(storageCapacity)} milk${status}`);
-    el.mps.textContent = fmt(cowMps(state));
+    el.mps.textContent = fmt(milkMps(state, now));
     el.totalMilk.textContent = fmt(state.totalMilk);
     el.perTap.textContent = fmt(perTap(state));
     el.price.textContent = fmt(salePrice(state));
@@ -157,6 +204,8 @@
       b.querySelector('.desc').textContent = item.desc(state);
       b.querySelector('.cost').textContent = `${fmt(c)} 🪙`;
       b.querySelector('.owned').textContent = `Owned: ${state.owned[item.id]}${item.oneTime ? '/1' : ''}`;
+      const badge = b.querySelector('.badge');
+      badge.textContent = item.id === 'babyCow' && isBabyCowMatureAt(state, now) ? '🏆 Golden Cow' : '';
       b.disabled = state.coins < c || (item.oneTime && state.owned[item.id] > 0);
     });
   }
@@ -201,6 +250,10 @@
       if (showToast) toast('Game saved 💾');
     } catch (e) { if (showToast) toast('Could not save (storage unavailable)'); }
   }
+  function finiteNonnegative(value, fallback = 0) {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : fallback;
+  }
   function load() {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
@@ -209,17 +262,43 @@
       const d = defaultState();
       state = Object.assign(d, data, { owned: Object.assign(d.owned, data.owned || {}) });
       ['coins', 'milk', 'totalMilk'].forEach(k => { if (!isFinite(state[k]) || state[k] < 0) state[k] = 0; });
+      state.lastSaved = finiteNonnegative(state.lastSaved, Date.now());
+      state.owned.babyCow = finiteNonnegative(state.owned.babyCow) > 0 ? 1 : 0;
+      if (state.owned.babyCow > 0) {
+        state.babyCowPurchasedAt = finiteNonnegative(state.babyCowPurchasedAt, 0);
+        if (!state.babyCowPurchasedAt) state.babyCowPurchasedAt = state.lastSaved || Date.now();
+        const expectedMaturity = state.babyCowPurchasedAt + BABY_COW_MATURATION_MS;
+        state.babyCowMaturesAt = finiteNonnegative(state.babyCowMaturesAt, 0);
+        if (state.babyCowMaturesAt !== expectedMaturity) state.babyCowMaturesAt = expectedMaturity;
+        state.babyCowMaturedAt = finiteNonnegative(state.babyCowMaturedAt, 0);
+        if (state.babyCowMaturedAt !== state.babyCowMaturesAt || Date.now() < state.babyCowMaturesAt) {
+          state.babyCowMaturedAt = 0;
+        }
+      } else {
+        state.babyCowPurchasedAt = 0;
+        state.babyCowMaturesAt = 0;
+        state.babyCowMaturedAt = 0;
+      }
       return true;
     } catch (e) { return false; }
   }
+  function updateBabyCowMaturity(now) {
+    if (!state.owned.babyCow || !state.babyCowMaturesAt || now < state.babyCowMaturesAt || state.babyCowMaturedAt) return false;
+    state.babyCowMaturedAt = state.babyCowMaturesAt;
+    save(false);
+    return true;
+  }
   function applyOffline() {
     const now = Date.now();
-    const elapsed = Math.max(0, (now - (state.lastSaved || now)) / 1000);
+    const lastSaved = finiteNonnegative(state.lastSaved, now) || now;
+    const elapsed = Math.max(0, (now - lastSaved) / 1000);
     const secs = Math.min(elapsed, OFFLINE_CAP_SEC);
-    const mps = cowMps(state);
-    if (secs < 30 || mps <= 0) return;
+    const payoutStart = now - secs * 1000;
+    updateBabyCowMaturity(now);
+    if (secs < 30) return;
     // Offline milk is sold automatically so nothing is lost to barn capacity.
-    const milk = mps * secs;
+    const milk = milkProducedBetween(state, payoutStart, now);
+    if (milk <= 0) return;
     const coins = milk * salePrice(state);
     state.coins += coins;
     state.totalMilk += milk;
@@ -246,8 +325,10 @@
   function loop(now) {
     const dt = Math.min(1, (now - last) / 1000);
     last = now;
-    const mps = cowMps(state);
-    if (mps > 0) addMilk(mps * dt);
+    const wallNow = Date.now();
+    const frameStart = wallNow - dt * 1000;
+    const produced = milkProducedBetween(state, frameStart, wallNow);
+    if (produced > 0) addMilk(produced);
     renderAcc += dt;
     if (renderAcc >= 0.1) { renderAcc = 0; render(); }
     requestAnimationFrame(loop);
@@ -294,8 +375,8 @@
   window.addEventListener('beforeunload', () => save());
 
   load();
-  renderShop();
   applyOffline();
+  renderShop();
   render();
   setInterval(() => save(), AUTOSAVE_MS);
   requestAnimationFrame(loop);

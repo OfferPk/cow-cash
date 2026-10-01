@@ -107,6 +107,8 @@ button { font: inherit; cursor: pointer; }
 .item .icon { font-size: 2rem; text-align: center; }
 .item .name { font-weight: 800; }
 .item .desc { font-size: .82rem; color: var(--muted); }
+.item .badge { display: inline-block; margin-top: 3px; color: #8a5a00; font-size: .78rem; font-weight: 800; }
+.item .badge:empty { display: none; }
 .item .meta { text-align: right; }
 .item .cost { font-weight: 800; color: var(--accent-dark); white-space: nowrap; }
 .item .owned { font-size: .78rem; color: var(--muted); }
