@@ -53,7 +53,7 @@
   // ---------- DOM ----------
   const $ = id => document.getElementById(id);
   const el = {
-    coins: $('coins'), milk: $('milk'), mps: $('mps'), totalMilk: $('totalMilk'), perTap: $('perTap'),
+    coins: $('coins'), milk: $('milk'), milkCapacity: $('milkCapacity'), mps: $('mps'), totalMilk: $('totalMilk'), perTap: $('perTap'),
     cow: $('cow'), sellBtn: $('sellBtn'), sellValue: $('sellValue'), autoSell: $('autoSell'),
     price: $('price'), shopList: $('shopList'), saveBtn: $('saveBtn'), resetBtn: $('resetBtn'),
     modal: $('modal'), modalTitle: $('modalTitle'), modalBody: $('modalBody'),
@@ -126,7 +126,16 @@
   }
   function render() {
     el.coins.textContent = fmt(state.coins);
-    el.milk.textContent = `${fmt(state.milk)} / ${fmt(capacity(state))}`;
+    const storageCapacity = capacity(state);
+    el.milk.textContent = `${fmt(state.milk)} / ${fmt(storageCapacity)}`;
+    el.milkCapacity.max = storageCapacity;
+    el.milkCapacity.value = Math.min(Math.max(state.milk, 0), storageCapacity);
+    const barnFull = state.milk >= storageCapacity;
+    const barnNearlyFull = !barnFull && state.milk >= storageCapacity * 0.8;
+    el.milkCapacity.classList.toggle('is-near-full', barnNearlyFull);
+    el.milkCapacity.classList.toggle('is-full', barnFull);
+    const status = barnFull ? ', barn full' : barnNearlyFull ? ', barn nearly full' : '';
+    el.milkCapacity.setAttribute('aria-valuetext', `${fmt(state.milk)} of ${fmt(storageCapacity)} milk${status}`);
     el.mps.textContent = fmt(cowMps(state));
     el.totalMilk.textContent = fmt(state.totalMilk);
     el.perTap.textContent = fmt(perTap(state));

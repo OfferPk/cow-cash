@@ -11,6 +11,12 @@ class FakeClassList {
   add(value) { this.values.add(value); }
   remove(value) { this.values.delete(value); }
   contains(value) { return this.values.has(value); }
+  toggle(value, force) {
+    if (force === undefined) force = !this.values.has(value);
+    if (force) this.values.add(value);
+    else this.values.delete(value);
+    return force;
+  }
 }
 
 class FakeElement {
@@ -26,8 +32,12 @@ class FakeElement {
     this.checked = false;
     this.disabled = false;
     this.isConnected = true;
+    this.attributes = {};
+    this.max = 100;
+    this.value = 0;
   }
   addEventListener(type, callback) { this.listeners[type] = callback; }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
   appendChild(child) { this.children.push(child); return child; }
   remove() { this.isConnected = false; }
   set innerHTML(value) {
@@ -45,7 +55,7 @@ class FakeElement {
 
 function startGame(savedState = null) {
   const ids = [
-    'coins', 'milk', 'mps', 'totalMilk', 'perTap', 'cow', 'sellBtn',
+    'coins', 'milk', 'milkCapacity', 'mps', 'totalMilk', 'perTap', 'cow', 'sellBtn',
     'sellValue', 'autoSell', 'price', 'shopList', 'saveBtn', 'resetBtn',
     'modal', 'modalTitle', 'modalBody', 'modalActions', 'toast',
   ];
