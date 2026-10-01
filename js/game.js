@@ -53,7 +53,7 @@
   // ---------- DOM ----------
   const $ = id => document.getElementById(id);
   const el = {
-    coins: $('coins'), milk: $('milk'), mps: $('mps'), perTap: $('perTap'),
+    coins: $('coins'), milk: $('milk'), mps: $('mps'), totalMilk: $('totalMilk'), perTap: $('perTap'),
     cow: $('cow'), sellBtn: $('sellBtn'), sellValue: $('sellValue'), autoSell: $('autoSell'),
     price: $('price'), shopList: $('shopList'), saveBtn: $('saveBtn'), resetBtn: $('resetBtn'),
     modal: $('modal'), modalTitle: $('modalTitle'), modalBody: $('modalBody'),
@@ -128,6 +128,7 @@
     el.coins.textContent = fmt(state.coins);
     el.milk.textContent = `${fmt(state.milk)} / ${fmt(capacity(state))}`;
     el.mps.textContent = fmt(cowMps(state));
+    el.totalMilk.textContent = fmt(state.totalMilk);
     el.perTap.textContent = fmt(perTap(state));
     el.price.textContent = fmt(price(state));
     el.sellValue.textContent = fmt(state.milk * price(state));
