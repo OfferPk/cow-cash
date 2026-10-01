@@ -135,6 +135,11 @@ button { font: inherit; cursor: pointer; }
   .footer { justify-content: center; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cow-btn img { animation: none; }
-  .milk-meter::-webkit-progress-value { transition: none; }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
 }
