@@ -18,11 +18,13 @@
       desc: s => `+50% milk from everything (now x${feedMultiplier(s).toFixed(1)})` },
     { id: 'barn',    icon: '🏠', name: 'Bigger Barn',     baseCost: 250,
       desc: s => `Doubles storage (${fmt(capacity(s))} milk) and +10% sell price` },
+    { id: 'factory', icon: '🏭', name: 'Dairy Factory',   baseCost: 25000, oneTime: true,
+      desc: () => 'Permanently triples milk sale price' },
   ];
 
   const defaultState = () => ({
     coins: 0, milk: 0, totalMilk: 0, autoSell: false,
-    owned: { cow: 0, machine: 0, feed: 0, barn: 0 },
+    owned: { cow: 0, machine: 0, feed: 0, barn: 0, factory: 0 },
     lastSaved: Date.now(),
   });
 
@@ -34,8 +36,14 @@
   function perTap(s) { return tapMultiplier(s) * feedMultiplier(s); }
   function cowMps(s) { return s.owned.cow * feedMultiplier(s); }
   function capacity(s) { return BASE_CAPACITY * Math.pow(2, s.owned.barn); }
-  function price(s) { return BASE_PRICE * (1 + 0.1 * s.owned.barn); }
-  function cost(item, s) { return Math.ceil(item.baseCost * Math.pow(COST_SCALE, s.owned[item.id])); }
+  function salePrice(s) {
+    const barnMultiplier = 1 + 0.1 * s.owned.barn;
+    const factoryMultiplier = s.owned.factory > 0 ? 3 : 1;
+    return BASE_PRICE * barnMultiplier * factoryMultiplier;
+  }
+  function cost(item, s) {
+    return item.oneTime ? item.baseCost : Math.ceil(item.baseCost * Math.pow(COST_SCALE, s.owned[item.id]));
+  }
 
   // ---------- Formatting ----------
   const SUFFIXES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
@@ -72,14 +80,14 @@
   }
   function sellAll() {
     if (state.milk <= 0) return 0;
-    const earned = state.milk * price(state);
+    const earned = state.milk * salePrice(state);
     state.coins += earned;
     state.milk = 0;
     return earned;
   }
   function buy(item) {
     const c = cost(item, state);
-    if (state.coins < c) return;
+    if (state.coins < c || (item.oneTime && state.owned[item.id] > 0)) return;
     state.coins -= c;
     state.owned[item.id]++;
     renderShop();
@@ -139,8 +147,8 @@
     el.mps.textContent = fmt(cowMps(state));
     el.totalMilk.textContent = fmt(state.totalMilk);
     el.perTap.textContent = fmt(perTap(state));
-    el.price.textContent = fmt(price(state));
-    el.sellValue.textContent = fmt(state.milk * price(state));
+    el.price.textContent = fmt(salePrice(state));
+    el.sellValue.textContent = fmt(state.milk * salePrice(state));
     el.sellBtn.disabled = state.milk <= 0;
     el.autoSell.checked = state.autoSell;
     el.shopList.querySelectorAll('.item').forEach(b => {
@@ -148,8 +156,8 @@
       const c = cost(item, state);
       b.querySelector('.desc').textContent = item.desc(state);
       b.querySelector('.cost').textContent = `${fmt(c)} 🪙`;
-      b.querySelector('.owned').textContent = `Owned: ${state.owned[item.id]}`;
-      b.disabled = state.coins < c;
+      b.querySelector('.owned').textContent = `Owned: ${state.owned[item.id]}${item.oneTime ? '/1' : ''}`;
+      b.disabled = state.coins < c || (item.oneTime && state.owned[item.id] > 0);
     });
   }
 
@@ -212,7 +220,7 @@
     if (secs < 30 || mps <= 0) return;
     // Offline milk is sold automatically so nothing is lost to barn capacity.
     const milk = mps * secs;
-    const coins = milk * price(state);
+    const coins = milk * salePrice(state);
     state.coins += coins;
     state.totalMilk += milk;
     const capped = elapsed > OFFLINE_CAP_SEC ? ' (capped at 2h)' : '';
