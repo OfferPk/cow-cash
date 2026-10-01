@@ -145,7 +145,10 @@
   }
 
   // ---------- Modal / toast ----------
+  let modalOpener = null;
   function showModal(title, body, actions) {
+    const activeElement = document.activeElement;
+    modalOpener = activeElement && activeElement !== document.body ? activeElement : null;
     el.modalTitle.textContent = title;
     el.modalBody.textContent = body;
     el.modalActions.innerHTML = '';
@@ -157,8 +160,14 @@
       el.modalActions.appendChild(b);
     });
     el.modal.classList.remove('hidden');
+    const firstAction = el.modalActions.querySelector('button:not(:disabled)');
+    if (firstAction) firstAction.focus();
   }
-  function hideModal() { el.modal.classList.add('hidden'); }
+  function hideModal() {
+    el.modal.classList.add('hidden');
+    if (modalOpener && modalOpener.isConnected) modalOpener.focus();
+    modalOpener = null;
+  }
   let toastTimer;
   function toast(msg) {
     el.toast.textContent = msg;
@@ -241,7 +250,28 @@
   el.saveBtn.addEventListener('click', () => save(true));
   el.resetBtn.addEventListener('click', resetGame);
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !el.modal.classList.contains('hidden')) hideModal();
+    if (el.modal.classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hideModal();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const actions = Array.from(el.modalActions.querySelectorAll('button:not(:disabled)'));
+    if (!actions.length) {
+      e.preventDefault();
+      return;
+    }
+    const first = actions[0];
+    const last = actions[actions.length - 1];
+    const focusIsOutside = !el.modal.contains(document.activeElement);
+    if (e.shiftKey && (document.activeElement === first || focusIsOutside)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (document.activeElement === last || focusIsOutside)) {
+      e.preventDefault();
+      first.focus();
+    }
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
   window.addEventListener('beforeunload', () => save());
