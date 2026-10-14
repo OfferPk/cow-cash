@@ -136,6 +136,9 @@ button { font: inherit; cursor: pointer; }
   .stats { width: 100%; }
   .footer { justify-content: center; text-align: center; }
 }
+@media (max-width: 420px) {
+  .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
